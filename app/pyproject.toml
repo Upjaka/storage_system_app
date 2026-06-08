@@ -1,0 +1,15 @@
+[project]
+name = "nicegui-component-based"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "nicegui==3.8.0",
+    "nicegui[highcharts]",
+    "pandas>=3.0.3",
+    "pyinstaller>=6.13.0",
+    "pyodbc>=5.3.0",
+    "pywebview>=5.4",
+    "sqlalchemy>=2.0.50",
+]
