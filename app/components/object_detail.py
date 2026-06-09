@@ -3,8 +3,8 @@ from services.database import get_db
 from services.object_service import get_object, update_object, create_object, delete_object
 
 def show_object_detail_dialog(obj_id: int = None):
-    with ui.dialog() as dialog, ui.card():
-        ui.label('Редактирование объекта' if obj_id else 'Новый объект').classes('text-h5')
+    with ui.dialog() as dialog, ui.card().classes('w-full max-w-3xl'):
+        ui.label('Редактирование объекта' if obj_id else 'Создание объекта').classes('text-h5')
         form_data = {
             'number_in_db': ui.number(label='Номер в БД', step=1, min=1, max=1000),
             'inv_number': ui.input(label='Инвентарный номер'),
