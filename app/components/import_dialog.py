@@ -2,26 +2,27 @@ from nicegui import ui
 from services.database import get_db
 from services.import_service import import_from_access
 import pyodbc
+from layout import DIALOG, FORM, INPUT
 
 def show_import_dialog():
-    with ui.dialog() as dialog, ui.card().classes('w-[600px]'):
-        ui.label('Импорт из Access').classes('text-h5 q-mb-md')
+    with ui.dialog() as dialog, ui.card().classes(DIALOG):
+        ui.label('Импорт из Access').classes('text-h5')
 
-        file_input = ui.upload(
-            label='Выберите файл Access (.mdb или .accdb)',
-            auto_upload=True,
-            on_upload=lambda e: load_tables(e, table_select, file_path, dialog, progress)
-        ).props('accept=".mdb,.accdb"')
-        file_path = ui.label('Файл не выбран').classes('text-caption')
+        with ui.column().classes(f'{FORM} gap-4 mt-2'):
+            file_input = ui.upload(
+                label='Выберите файл Access (.mdb или .accdb)',
+                auto_upload=True,
+                on_upload=lambda e: load_tables(e, table_select, file_path, dialog, progress),
+            ).props('accept=".mdb,.accdb"').classes(INPUT)
+            file_path = ui.label('Файл не выбран').classes('text-caption')
 
-        # Изначально скрыты
-        table_select = ui.select(
-            label='Таблица для импорта',
-            options=[],
-            with_input=True
-        ).classes('w-full').set_visibility(False)
+            table_select = ui.select(
+                label='Таблица для импорта',
+                options=[],
+                with_input=True,
+            ).classes(INPUT).set_visibility(False)
 
-        progress = ui.linear_progress(value=0).classes('w-full').set_visibility(False)
+            progress = ui.linear_progress(value=0).classes(INPUT).set_visibility(False)
 
         def do_import():
             if not file_input.value or not table_select.value:
@@ -63,7 +64,7 @@ def show_import_dialog():
                 select_widget.set_visibility(False)
                 prog.set_visibility(False)
 
-        with ui.row().classes('justify-end w-full gap-2 mt-4'):
+        with ui.row().classes(f'{FORM} justify-end gap-2 mt-4'):
             ui.button('Импортировать', on_click=do_import, icon='publish', color='primary')
             ui.button('Отмена', on_click=dialog.close, icon='close')
 

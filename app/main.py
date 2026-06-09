@@ -4,6 +4,7 @@ import json
 from functools import wraps
 from nicegui import app, ui
 import header
+from layout import PAGE
 from components.objects_list import content as objects_list_content
 from components.import_dialog import show_import_dialog
 
@@ -24,8 +25,9 @@ def with_base_layout(route_handler):
                   warning='#f59e0b', info='#3b82f6', accent='#e4e4e7')
         with header.frame(title=appName, version=appVersion,
                           import_callback=show_import_dialog):
-            with ui.column().classes('w-full flex-grow p-4').style('min-height: 0'):
-                return route_handler(*args, **kwargs)
+            with ui.column().classes('w-full flex-grow px-4 py-4').style('min-height: 0'):
+                with ui.column().classes(f'{PAGE} gap-4 min-h-0'):
+                    return route_handler(*args, **kwargs)
     return wrapper
 
 # ── Page and sub‑page routing ────────────────────────────────────────────
