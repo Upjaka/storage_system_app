@@ -10,19 +10,18 @@ def show_import_dialog():
         file_input = ui.upload(
             label='Выберите файл Access (.mdb или .accdb)',
             auto_upload=True,
-            on_upload=lambda e: load_tables(e, table_select, file_path, dialog)
+            on_upload=lambda e: load_tables(e, table_select, file_path, dialog, progress)
         ).props('accept=".mdb,.accdb"')
         file_path = ui.label('Файл не выбран').classes('text-caption')
 
+        # Изначально скрыты
         table_select = ui.select(
             label='Таблица для импорта',
             options=[],
             with_input=True
-        ).classes('w-full').bind_visibility_from(file_input, 'value', lambda v: bool(v))
+        ).classes('w-full').set_visibility(False)
 
-        progress = ui.linear_progress(value=0).classes('w-full').bind_visibility_from(
-            table_select, 'value', lambda v: bool(v)
-        )
+        progress = ui.linear_progress(value=0).classes('w-full').set_visibility(False)
 
         def do_import():
             if not file_input.value or not table_select.value:
@@ -33,13 +32,11 @@ def show_import_dialog():
                     count = import_from_access(db, file_input.value[0].name, table_select.value)
                 ui.notify(f'Импортировано {count} записей', type='positive')
                 dialog.close()
-                # Обновляем главную страницу (перезагружаем виджет списка)
-                # Проще всего перезагрузить всю страницу
                 ui.open('/')
             except Exception as e:
                 ui.notify(f'Ошибка: {e}', type='negative')
 
-        def load_tables(upload_event, select_widget, path_label, dlg):
+        def load_tables(upload_event, select_widget, path_label, dlg, prog):
             path_label.set_text(f'Файл: {upload_event.name}')
             try:
                 conn_str = (
@@ -54,11 +51,17 @@ def show_import_dialog():
                 select_widget.options = table_names
                 if table_names:
                     select_widget.value = table_names[0]
+                    select_widget.set_visibility(True)
+                    prog.set_visibility(True)
                 else:
                     ui.notify('В базе данных нет таблиц', type='warning')
+                    select_widget.set_visibility(False)
+                    prog.set_visibility(False)
             except Exception as e:
                 ui.notify(f'Ошибка получения списка таблиц: {e}', type='negative')
                 select_widget.options = []
+                select_widget.set_visibility(False)
+                prog.set_visibility(False)
 
         with ui.row().classes('justify-end w-full gap-2 mt-4'):
             ui.button('Импортировать', on_click=do_import, icon='publish', color='primary')
