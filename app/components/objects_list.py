@@ -5,13 +5,13 @@ from components.object_detail import show_object_detail_dialog
 
 def content():
     filters = {
-        'number_in_db': '',
-        'inv_number': '',
-        'address': '',
-        'region': '',
-        'object_type': '',
-        'responsible': '',
-        'system_type': ''
+        'number_in_db': 'Номер в БД',
+        'inv_number': 'Инвентарный номер',
+        'address': 'Адрес',
+        'region': 'Регион',
+        'object_type': 'Тип объекта',
+        'responsible': 'Ответственный',
+        'system_type': 'Тип системы'
     }
 
     def refresh_table():
@@ -20,7 +20,7 @@ def content():
             objects = get_objects_filtered(db, active)
         rows = [{
             'id': o.id,
-            'Номер в БД': o.number_in_db,
+            'Номер в БД': o.number_in_db, 
             'Инв. №': o.inv_number,
             'Адрес': o.address,
             'Регион': o.region,
@@ -38,8 +38,7 @@ def content():
         with ui.row().classes('w-full gap-2 flex-wrap'):
             for field, placeholder in filters.items():
                 ui.input(
-                    label=field.replace('_', ' ').title(),
-                    placeholder=placeholder,
+                    label=placeholder,
                     on_change=lambda e, f=field: filters.update({f: e.value}) or refresh_table()
                 )
         ui.button('Добавить объект', on_click=lambda: show_object_detail_dialog()).props('flat')
