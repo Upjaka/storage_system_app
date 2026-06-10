@@ -16,6 +16,8 @@ appName    = config["appName"]
 appVersion = config["appVersion"]
 appPort    = config["appPort"]
 
+_list_refresh = lambda: None
+
 # ── Base layout decorator — applies theme and header shell ───────────────
 def with_base_layout(route_handler):
     @wraps(route_handler)
@@ -23,8 +25,11 @@ def with_base_layout(route_handler):
         ui.colors(primary='#18181b', secondary='#f4f4f5',
                   positive='#4caf50', negative='#ef4444',
                   warning='#f59e0b', info='#3b82f6', accent='#e4e4e7')
-        with header.frame(title=appName, version=appVersion,
-                          import_callback=show_import_dialog):
+        with header.frame(
+            title=appName,
+            version=appVersion,
+            import_callback=lambda: show_import_dialog(on_changed=_list_refresh),
+        ):
             with ui.column().classes('w-full flex-grow px-4 py-4').style('min-height: 0'):
                 with ui.column().classes(f'{PAGE} gap-4 min-h-0'):
                     return route_handler(*args, **kwargs)
@@ -40,7 +45,11 @@ def root():
     })
 
 def index():
-    objects_list_content()
+    def register_refresh(refresh):
+        global _list_refresh
+        _list_refresh = refresh
+
+    objects_list_content(on_changed=register_refresh)
 
 def object_detail_page(object_id: int):
     from components.object_detail import content as object_detail_content

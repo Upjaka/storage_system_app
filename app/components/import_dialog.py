@@ -4,7 +4,7 @@ from services.import_service import import_from_access
 import pyodbc
 from layout import DIALOG, FORM, INPUT
 
-def show_import_dialog():
+def show_import_dialog(on_changed=None):
     with ui.dialog() as dialog, ui.card().classes(DIALOG):
         ui.label('Импорт из Access').classes('text-h5')
 
@@ -33,7 +33,8 @@ def show_import_dialog():
                     count = import_from_access(db, file_input.value[0].name, table_select.value)
                 ui.notify(f'Импортировано {count} записей', type='positive')
                 dialog.close()
-                ui.open('/')
+                if on_changed:
+                    on_changed()
             except Exception as e:
                 ui.notify(f'Ошибка: {e}', type='negative')
 
