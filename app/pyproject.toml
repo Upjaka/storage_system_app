@@ -13,3 +13,10 @@ dependencies = [
     "pywebview>=5.4",
     "sqlalchemy>=2.0.50",
 ]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -6,43 +6,10 @@ from services.object_service import (
 )
 from services.reference_service import get_regions, get_responsibles
 from layout import DIALOG, FIELD, FORM, GRID_2, INPUT, SPAN_2
+from services.object_validation import validate_create_data
 
 # 'simple' — короткие сообщения для пользователя; 'verbose' — подробности для отладки
 ERROR_MODE = 'simple'
-
-_FIELD_LABELS = {
-    'number_in_db': 'Номер в БД',
-    'inv_number': 'Инвентарный номер',
-    'address': 'Адрес',
-    'region_id': 'Регион',
-    'object_type': 'Тип объекта',
-    'ownership': 'Собственность',
-    'cost': 'Стоимость',
-    'responsible_id': 'Ответственный',
-    'maintenance_mode': 'Режим ТО',
-    'system_type': 'Тип системы',
-}
-
-_REQUIRED_CREATE_FIELDS = ('number_in_db', 'inv_number', 'address')
-
-
-def _is_blank(value) -> bool:
-    if value is None:
-        return True
-    if isinstance(value, str):
-        return not value.strip()
-    return False
-
-
-def _validate_create_data(data: dict) -> str | None:
-    missing = [field for field in _REQUIRED_CREATE_FIELDS if _is_blank(data.get(field))]
-    if not missing:
-        return None
-    labels = [_FIELD_LABELS[field] for field in missing]
-    if ERROR_MODE == 'verbose':
-        details = ', '.join(f'{field} ({_FIELD_LABELS[field]})' for field in missing)
-        return f'Не заполнены обязательные поля: {details}'
-    return f'Заполните обязательные поля: {", ".join(labels)}'
 
 
 def _integrity_message(exc: IntegrityError) -> str:
@@ -147,7 +114,7 @@ def show_object_detail_dialog(obj_id: int = None, on_changed=None):
         def save():
             data = {key: widget.value for key, widget in form_data.items()}
             if not obj_id:
-                validation_error = _validate_create_data(data)
+                validation_error = validate_create_data(data, error_mode=ERROR_MODE)
                 if validation_error:
                     ui.notify(validation_error, type='negative')
                     return
