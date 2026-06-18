@@ -187,9 +187,9 @@ def content(kind: ReferenceKind, on_changed=None):
         with ui.element('div').classes('w-full min-w-0 overflow-x-auto'):
             table = ui.table(
                 columns=[
-                    {'name': 'id', 'label': 'ID', 'field': 'id'},
-                    {'name': 'Наименование', 'label': 'Наименование', 'field': 'Наименование'},
-                    {'name': 'Объектов', 'label': 'Объектов', 'field': 'Объектов'},
+                    {'name': 'id', 'label': 'ID', 'field': 'id', 'align': 'left'},
+                    {'name': 'Наименование', 'label': 'Наименование', 'field': 'Наименование', 'align': 'center'},
+                    {'name': 'Объектов', 'label': 'Объектов', 'field': 'Объектов', 'align': 'right'},
                 ],
                 rows=[],
                 row_key='id',

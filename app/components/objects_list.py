@@ -92,10 +92,10 @@ def content(on_changed=None):
             table = ui.table(
                 columns=[
                     {'name': 'id', 'label': 'ID', 'field': 'id'},
-                    {'name': 'Номер в БД', 'label': 'Номер в БД', 'field': 'Номер в БД'},
-                    {'name': 'Инв. №', 'label': 'Инвентарный номер', 'field': 'Инв. №'},
-                    {'name': 'Адрес', 'label': 'Адрес', 'field': 'Адрес'},
-                    {'name': 'Регион', 'label': 'Регион', 'field': 'Регион'},
+                    {'name': 'Номер в БД', 'label': '№ в БД', 'field': 'Номер в БД', 'align': 'center'},
+                    {'name': 'Инв. №', 'label': 'Инвентарный номер', 'field': 'Инв. №', 'align': 'left'},
+                    {'name': 'Адрес', 'label': 'Адрес', 'field': 'Адрес', 'align': 'left'},
+                    {'name': 'Регион', 'label': 'Регион', 'field': 'Регион', 'align': 'center'},
                     {'name': 'Ответственный', 'label': 'Ответственный', 'field': 'Ответственный'},
                     {'name': 'Система', 'label': 'Тип системы', 'field': 'Система'},
                 ],
