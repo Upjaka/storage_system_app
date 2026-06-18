@@ -1,6 +1,7 @@
 """Shared Tailwind layout tokens for responsive page and form layout."""
 
 PAGE = 'w-full max-w-7xl mx-auto'
+CONTENT = 'w-full max-w-full'
 FORM = 'w-full max-w-2xl mx-auto'
 DIALOG = 'w-[min(100%,48rem)] max-w-full'
 INPUT = 'w-full'

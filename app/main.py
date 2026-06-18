@@ -2,11 +2,22 @@
 
 import json
 from functools import wraps
+
 from nicegui import app, ui
-import header
-from layout import PAGE
-from components.objects_list import content as objects_list_content
+
+import shell
 from components.import_dialog import show_import_dialog
+from components.objects_list import content as objects_list_content
+from components.regions_list import content as regions_list_content
+from components.responsibles_list import content as responsibles_list_content
+
+# ── Static assets and global styles ───────────────────────────────────────
+app.add_static_files('/assets', 'assets')
+ui.add_head_html(
+    '<link rel="stylesheet" href="/assets/css/global-css.css">'
+    '<link rel="stylesheet" href="/assets/css/icons.css">',
+    shared=True,
+)
 
 # ── Config ────────────────────────────────────────────────────────────────
 with open('config.json', 'r', encoding='utf-8') as f:
@@ -18,21 +29,16 @@ appPort    = config["appPort"]
 
 _list_refresh = lambda: None
 
-# ── Base layout decorator — applies theme and header shell ───────────────
+# ── Base layout decorator — applies theme and app shell ───────────────────
 def with_base_layout(route_handler):
     @wraps(route_handler)
     def wrapper(*args, **kwargs):
-        ui.colors(primary='#18181b', secondary='#f4f4f5',
-                  positive='#4caf50', negative='#ef4444',
-                  warning='#f59e0b', info='#3b82f6', accent='#e4e4e7')
-        with header.frame(
+        with shell.app_shell(
             title=appName,
             version=appVersion,
             import_callback=lambda: show_import_dialog(on_changed=_list_refresh),
         ):
-            with ui.column().classes('w-full flex-grow px-4 py-4').style('min-height: 0'):
-                with ui.column().classes(f'{PAGE} gap-4 min-h-0'):
-                    return route_handler(*args, **kwargs)
+            return route_handler(*args, **kwargs)
     return wrapper
 
 # ── Page and sub‑page routing ────────────────────────────────────────────
@@ -41,7 +47,8 @@ def with_base_layout(route_handler):
 def root():
     ui.sub_pages({
         '/': index,
-        '/object/{object_id}': object_detail_page,   # опционально
+        '/references/regions': regions_page,
+        '/references/responsibles': responsibles_page,
     })
 
 def index():
@@ -51,10 +58,12 @@ def index():
 
     objects_list_content(on_changed=register_refresh)
 
-def object_detail_page(object_id: int):
-    from components.object_detail import content as object_detail_content
-    object_detail_content(object_id)
+def regions_page():
+    regions_list_content()
+
+def responsibles_page():
+    responsibles_list_content()
 
 # ── Entry point ──────────────────────────────────────────────────────────
 ui.run(root, storage_secret="myStorageSecret",
-       title=appName, port=appPort, favicon='ico.ico', reconnect_timeout=20)
+       title=appName, port=appPort, favicon='dashboard.ico', reconnect_timeout=20)

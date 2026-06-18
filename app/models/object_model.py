@@ -31,7 +31,7 @@ class Object(Base):
     address = Column(String, nullable=False)
     region_id = Column(Integer, ForeignKey('regions.id'), nullable=True)
     object_type = Column(String(50))
-    ownership = Column(Enum('Собственность', 'Аренда', name='ownership_types'), nullable=False)
+    ownership = Column(Enum('Собственность', 'Аренда', 'н/д', name='ownership_types'), nullable=False)
     cost = Column(Float, default=0.0)
     responsible_id = Column(Integer, ForeignKey('responsibles.id'), nullable=True)
     maintenance_mode = Column(Enum('ежемесячное', 'квартальное', name='maintenance_modes'), nullable=False)
