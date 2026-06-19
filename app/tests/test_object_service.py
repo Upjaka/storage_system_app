@@ -7,8 +7,10 @@ from services.object_service import (
     update_object,
     get_object,
     get_next_number_in_db,
+    get_objects_filtered,
 )
 from services.reference_service import get_or_create_region, get_or_create_responsible
+from services.system_flag_service import set_system_codes
 from conftest import assert_object_matches_input, object_payload
 
 
@@ -148,3 +150,49 @@ def test_create_round_trip_input_fidelity(db):
     obj = create_object(db, payload)
 
     assert_object_matches_input(db, obj.id, payload)
+
+
+def test_get_objects_filtered_by_text_fields(db):
+    create_object(db, object_payload(
+        number_in_db=101,
+        inv_number='INV-ALPHA',
+        address='ул. Ленина, 1',
+        region_id='Москва',
+        responsible_id='Иванов',
+        object_type='Офис',
+        system_type='АПС',
+    ))
+    create_object(db, object_payload(
+        number_in_db=202,
+        inv_number='INV-BETA',
+        address='ул. Мира, 2',
+        region_id='Казань',
+        responsible_id='Петров',
+        object_type='Склад',
+        system_type='СОУЭ',
+    ))
+
+    assert len(get_objects_filtered(db, {'number_in_db': '10'})) == 1
+    assert get_objects_filtered(db, {'number_in_db': '10'})[0].number_in_db == 101
+    assert len(get_objects_filtered(db, {'inv_number': 'BETA'})) == 1
+    assert len(get_objects_filtered(db, {'address': 'Мира'})) == 1
+    assert len(get_objects_filtered(db, {'region': 'Моск'})) == 1
+    assert len(get_objects_filtered(db, {'responsible': 'Петр'})) == 1
+    assert len(get_objects_filtered(db, {'object_type': 'Склад'})) == 1
+    assert len(get_objects_filtered(db, {'system_type': 'СОУЭ'})) == 1
+
+
+def test_get_objects_filtered_by_region_and_responsible_ids(db):
+    obj = create_object(db, object_payload(region_id='Самара', responsible_id='Сидоров'))
+    db.commit()
+
+    assert len(get_objects_filtered(db, {'region_id': obj.region_id})) == 1
+    assert len(get_objects_filtered(db, {'responsible_id': obj.responsible_id})) == 1
+
+
+def test_get_objects_filtered_matches_secondary_system_flag(db):
+    obj = create_object(db, object_payload(system_type='АПС'))
+    set_system_codes(db, obj.id, ['АПС', 'ВПВ'])
+    db.commit()
+
+    assert len(get_objects_filtered(db, {'system_type': 'ВПВ'})) == 1

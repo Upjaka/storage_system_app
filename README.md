@@ -1,189 +1,107 @@
-<img align="left" src="/FRYCODE_LAB.png">
+# Система учёта объектов (РТК)
 
-We are focused on developing custom software solutions for different purposes.
-This template is the result of the learning curve we had developing many applications.
-We want to share it with the community - to help NiceGUI becomming bigger. A big thank you to @zauberzeug/niceGUI for this amazing framework.
-<br clear="left"/>
+Веб-приложение на **NiceGUI + SQLAlchemy + SQLite** для учёта объектов пожарной автоматики, состава оборудования, журнала ТО, допработ и справочников. Данные мигрируются из Microsoft Access (`РТК.accdb`).
 
-# NiceGUI Component-Based Template
+## Требования
 
-This repository is a starter template for building web applications with NiceGUI. It is primarily targeted at desktop and tablet screen sizes and is not optimized for mobile devices. It includes:
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) — менеджер пакетов
+- **Windows** и драйвер ODBC **Microsoft Access Driver (\*.mdb, \*.accdb)** — только для импорта из Access
 
-- A header and collapsible sidebar layout
-- Component pages placed in `app/components/`
-- A design system page with reusable CSS tokens and components
-- An icon browser for Tabler and Material icons (click to copy)
-- A print system supporting raw HTML, base64 images, and structured pages
-- Small service modules for notifications and mock dashboard data
+> Импорт из `.accdb` в Docker/Linux **не поддерживается** (нет ODBC-драйвера Access). В контейнере приложение работает с уже заполненной базой SQLite.
 
-Target: desktop and tablet (not optimized for mobile)
-https://demo.frycode-lab.com/
-
-![Python](https://img.shields.io/badge/python-v3.11+-blue.svg)
-![NiceGUI](https://img.shields.io/badge/NiceGUI-latest-green.svg)
-![UV](https://img.shields.io/badge/uv-package%20manager-orange.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-
-## Demo
-
-[https://demo.frycode-lab.com/](https://demo.frycode-lab.com/)
-
-<img align="center" src="/Demo.gif">
-
-## Core files and components
-
-```
-app/
-├── main.py                       # Application entry point and routes
-├── header.py                     # Header and sidebar implementation
-├── footer.py                     # Footer (optional)
-├── config.json                   # App configuration
-├── pyproject.toml                # Dependencies
-├── assets/                       # CSS and image assets
-│   ├── css/
-│   │   ├── global-css.css
-│   │   └── icons.css
-│   └── images/
-├── components/                  # Page components
-│   ├── dashboard_content.py
-│   ├── design_system_content.py # Live design system reference
-│   ├── icons_content.py         # Icon browser (Tabler + Material)
-│   ├── print_demo_content.py    # Demo pages for print modes
-│   ├── print_component.py       # Print helpers and /print/ route
-│   ├── production_content.py
-│   ├── shipping_content.py
-│   ├── orders_content.py
-│   ├── pallets_content.py
-│   ├── packings_content.py
-│   └── settings_content.py
-└── services/                    # Utility services
-    ├── __init__.py
-    ├── helpers.py
-    ├── notifications.py         # Custom notifications
-    └── dashboard_data.py        # Mock KPI and chart data
-```
-
-## Design system
-
-The `design_system_content.py` page is a live reference for the project's CSS tokens, utility classes and component examples. It demonstrates:
-
-- Typography scales and text utility classes
-- Button variants, sizes and disabled states
-- Cards, panels, badges and status dots
-- Alerts, notifications and positioned toasts
-- Form inputs, groups, selects and validation styles
-- Progress indicators, dialogs, tooltips, steppers and more
-
-Use this page to see available classes and example usage when building new components.
-
-## Icon browser
-
-The icon browser (`icons_content.py`) parses Tabler icons from `assets/css/icons.css` and includes a curated list of Material icons. It provides a searchable grid and click-to-copy behavior for icon names or classes.
-
-## Print system
-
-The print system is implemented in `components/print_component.py`. It provides helper functions used by other components:
-
-- `encode_html(html: str) -> str` — encode raw HTML for the `/print/{token}` route
-- `encode_image(b64_data: str, mime: str, caption: str) -> str` — encode a base64 image
-- `encode_page(title, subtitle, sections) -> str` — encode a structured document
-- `open_print(token: str)` — open the print view in a new tab
-
-`print_demo_content.py` shows interactive examples for all three print modes (HTML, image, structured page).
-
-## Services
-
-- `services/helpers.py` — assorted utilities referenced by components
-- `services/notifications.py` — custom HTML notifications with position and type options
-- `services/dashboard_data.py` — generates mock KPI and chart data for the dashboard component
-
-## Requirements
-
-- Python 3.11 or newer
-- UV package manager
-
-## Setup and run
-
-Install uv package manager:
-
-```bash
-pip install uv
-```
-
-Change to app directory:
+## Быстрый старт
 
 ```bash
 cd app
-```
-
-Install dependencies:
-
-```bash
 uv sync
-```
-
-Run in development:
-
-```bash
 uv run python main.py
 ```
 
-## Adding or updating a component
+Приложение откроется на порту из `config.json` (по умолчанию 8080).
 
-1. Add a new module in `app/components/`.
-2. Implement a `content()` function that constructs the UI via NiceGUI.
-3. Register the route in `app/main.py` and add a sidebar entry in `app/header.py`.
+## Структура
 
-## Deployment Options
-
-### Development
-```python
-ui.run(root, host='0.0.0.0', storage_secret="your-secret", title=appName, 
-       port=appPort, favicon='ico.ico', reconnect_timeout=20, reload=True)
+```
+app/
+├── main.py                 # Точка входа и маршруты
+├── objects.db              # SQLite-база (создаётся автоматически)
+├── components/             # UI: списки, карточки, импорт, печать
+├── models/                 # SQLAlchemy-модели
+├── services/               # Бизнес-логика и импорт
+└── tests/
+    └── fixtures/access/    # Тестовый РТК.accdb
 ```
 
-### Production
-```python
-ui.run(root, host='0.0.0.0', storage_secret="your-secret", title=appName, 
-       port=appPort, favicon='ico.ico', reconnect_timeout=20, reload=False)
-```
+## Импорт из Access
 
-### Native Application
-```python
-ui.run(root, storage_secret="your-secret", title=appName, port=appPort, 
-       favicon='🧿', reload=False, native=True, window_size=(1600,900))
-```
+1. В шапке приложения нажмите **Импорт**.
+2. Выберите режим **Полный импорт** (рекомендуется) или импорт одной таблицы.
+3. Загрузите файл `.mdb` / `.accdb`.
+4. Нажмите **Импортировать**.
 
-### Docker Deployment
-```python
-ui.run(root, storage_secret=os.environ['STORAGE_SECRET'], 
-       host=os.environ['HOST'], title=appName, port=appPort, 
-       favicon='ico.ico', reconnect_timeout=20, reload=False)
-```
+Полный импорт выполняется в одной транзакции: при ошибке все изменения откатываются. После успешного импорта отображается отчёт с количеством записей и предупреждениями (несопоставленные регионы, «сиротские» строки без объекта и т.д.).
 
-- For **Docker** adjust `main.py` and use:
+Порядок импорта: справочники → объекты → типы систем → состав → журнал ТО → допработы → документы.
 
-    ```bash
-        #For Docker
-        ui.run(root, storage_secret=os.environ['STORAGE_SECRET'])
-    ```
+Повторный импорт **идемпотентен**: записи обновляются по `access_code` / инвентарному номеру, дубликаты не создаются.
 
-    Go one folder back in terminal where the **docker-compose.yaml** is located:
+### Тесты импорта (Windows)
 
-    ```bash
-        cd ..
-        docker compose up
-    ```
-
-Your container should build an image template:latest and run the container on http://localhost:8080.
-
-### PyInstaller Build
 ```bash
-python -m PyInstaller --name 'YourApp' --onedir main.py --add-data 'venv/Lib/site-packages/nicegui;nicegui' --noconfirm --clean
+cd app
+uv run pytest tests/test_import_service.py -q
 ```
 
-## License and authors
+Тесты с фикстурой `РТК.accdb` пропускаются, если ODBC-драйвер Access недоступен.
 
-See project files for license details.
+## Печать
 
-- Author: @frycodelab (https://frycode-lab.com)
+Из карточки объекта, записи ТО и допработы доступны печатные формы (паспорт объекта, акт ТО, допработы). Открываются в новой вкладке через `/print/{token}`.
+
+## Развёртывание
+
+### Локально (разработка)
+
+```bash
+cd app
+uv run python main.py
+```
+
+### Docker (без импорта Access)
+
+```bash
+docker compose up
+```
+
+Смонтируйте готовый `objects.db` в контейнер или заполните базу на Windows перед деплоем.
+
+### Сборка exe (PyInstaller)
+
+```bash
+cd app
+uv run python -m PyInstaller --name storage_system --onedir main.py --noconfirm
+```
+
+## Чеклист перехода с Access (cutover)
+
+1. **Резервная копия** — скопируйте production `РТК.accdb` и текущий `app/objects.db` (если есть).
+2. **Окружение** — Windows, установлен Access ODBC Driver, `uv sync` в `app/`.
+3. **Тестовый прогон** — импортируйте копию `.accdb` в тестовую SQLite, проверьте отчёт валидации (предупреждения по регионам / сиротам).
+4. **Сверка** — сравните количество объектов (232), составов, записей ТО и допработ с Access.
+5. **UAT** — пройдите ключевые сценарии: список объектов, карточка, состав, журнал ТО, допработы, справочники, печать.
+6. **Production** — остановите приложение, замените/очистите `objects.db`, выполните полный импорт из актуального `РТК.accdb`, сохраните отчёт импорта.
+7. **Откат** — при проблемах восстановите `objects.db` из резервной копии.
+
+Путь к базе SQLite: `app/objects.db` (см. `services.database.get_database_path()`).
+
+## Тесты
+
+```bash
+cd app
+uv run pytest -q
+```
+
+## Лицензия
+
+См. файлы проекта.

@@ -2,8 +2,10 @@ import os
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, Session
 from models.object_model import Base
+import models.catalog_model  # noqa: F401 — register catalog tables
+import models.operations_model  # noqa: F401 — register operations tables
 
-_db_path = os.path.join(os.path.dirname(__file__), '..', 'objects.db')
+_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'objects.db'))
 _engine = create_engine(f'sqlite:///{_db_path}', echo=False)
 SessionLocal = sessionmaker(bind=_engine)
 
@@ -82,8 +84,74 @@ def _migrate_to_reference_tables(engine) -> None:
         conn.execute(text('ALTER TABLE objects DROP COLUMN responsible'))
 
 
+def _add_column_if_missing(
+    inspector,
+    conn,
+    table: str,
+    column: str,
+    column_def: str,
+) -> None:
+    if table not in inspector.get_table_names():
+        return
+    columns = {col['name'] for col in inspector.get_columns(table)}
+    if column not in columns:
+        conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {column_def}'))
+
+
+def _backfill_system_flags(conn) -> None:
+    rows = conn.execute(
+        text('SELECT id, system_type FROM objects WHERE system_type IS NOT NULL'),
+    ).fetchall()
+    for row in rows:
+        existing = conn.execute(
+            text('SELECT COUNT(*) FROM object_system_flags WHERE object_id = :object_id'),
+            {'object_id': row.id},
+        ).scalar()
+        if existing:
+            continue
+        conn.execute(
+            text(
+                'INSERT INTO object_system_flags (object_id, system_code) '
+                'VALUES (:object_id, :system_code)'
+            ),
+            {'object_id': row.id, 'system_code': row.system_type},
+        )
+
+
+def _migrate_phase1_schema(engine) -> None:
+    inspector = inspect(engine)
+    if 'objects' not in inspector.get_table_names():
+        return
+
+    Base.metadata.create_all(engine)
+
+    with engine.begin() as conn:
+        _add_column_if_missing(inspector, conn, 'objects', 'access_code', 'INTEGER')
+        if 'responsibles' in inspector.get_table_names():
+            for column, column_def in (
+                ('access_code', 'INTEGER'),
+                ('department', 'VARCHAR(100)'),
+                ('position', 'VARCHAR(100)'),
+                ('email', 'VARCHAR(100)'),
+                ('phone', 'VARCHAR(50)'),
+            ):
+                _add_column_if_missing(inspector, conn, 'responsibles', column, column_def)
+
+    inspector = inspect(engine)
+    if 'object_system_flags' not in inspector.get_table_names():
+        return
+
+    with engine.begin() as conn:
+        _backfill_system_flags(conn)
+
+
 Base.metadata.create_all(_engine)
 _migrate_to_reference_tables(_engine)
+_migrate_phase1_schema(_engine)
+
+def get_database_path() -> str:
+    return _db_path
+
 
 def get_db() -> Session:
     return SessionLocal()

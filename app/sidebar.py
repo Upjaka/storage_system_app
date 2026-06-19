@@ -13,11 +13,17 @@ class NavItem:
 
 OBJECTS_NAV = (
     NavItem('Список объектов', '/', 'list'),
+    NavItem('Журнал ТО', '/maintenance', 'event_note'),
+    NavItem('Допработы', '/extra-works', 'receipt_long'),
 )
 
 REFERENCES_NAV = (
     NavItem('Регионы', '/references/regions', 'map'),
     NavItem('Ответственные', '/references/responsibles', 'person'),
+    NavItem('Единицы измерения', '/references/units', 'straighten'),
+    NavItem('Материалы', '/references/materials', 'inventory_2'),
+    NavItem('Виды работ', '/references/work-types', 'construction'),
+    NavItem('Стоимость ТО', '/references/maintenance-prices', 'payments'),
 )
 
 

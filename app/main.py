@@ -10,6 +10,13 @@ from components.import_dialog import show_import_dialog
 from components.objects_list import content as objects_list_content
 from components.regions_list import content as regions_list_content
 from components.responsibles_list import content as responsibles_list_content
+from components.units_list import content as units_list_content
+from components.materials_list import content as materials_list_content
+from components.work_types_list import content as work_types_list_content
+from components.maintenance_prices_list import content as maintenance_prices_list_content
+from components.maintenance_list import content as maintenance_list_content
+from components.extra_works_list import content as extra_works_list_content
+from components.print_component import register_print_route
 
 # ── Static assets and global styles ───────────────────────────────────────
 app.add_static_files('/assets', 'assets')
@@ -49,6 +56,12 @@ def root():
         '/': index,
         '/references/regions': regions_page,
         '/references/responsibles': responsibles_page,
+        '/references/units': units_page,
+        '/references/materials': materials_page,
+        '/references/work-types': work_types_page,
+        '/references/maintenance-prices': maintenance_prices_page,
+        '/maintenance': maintenance_page,
+        '/extra-works': extra_works_page,
     })
 
 def index():
@@ -64,6 +77,25 @@ def regions_page():
 def responsibles_page():
     responsibles_list_content()
 
+def units_page():
+    units_list_content()
+
+def materials_page():
+    materials_list_content()
+
+def work_types_page():
+    work_types_list_content()
+
+def maintenance_prices_page():
+    maintenance_prices_list_content()
+
+def maintenance_page():
+    maintenance_list_content()
+
+def extra_works_page():
+    extra_works_list_content()
+
 # ── Entry point ──────────────────────────────────────────────────────────
+register_print_route()
 ui.run(root, storage_secret="myStorageSecret",
        title=appName, port=appPort, favicon='dashboard.ico', reconnect_timeout=20)

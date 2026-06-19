@@ -148,11 +148,13 @@ def _show_edit_dialog(
 def content(kind: ReferenceKind, on_changed=None):
     config = _CONFIGS[kind]
     filter_text = {'name': ''}
+    search_input: ui.input | None = None
 
     def refresh_table() -> None:
         with get_db() as db:
             items = config.get_all(db)
             total = len(items)
+            autocomplete_names = [item.name for item in items]
             rows = []
             needle = filter_text['name'].strip().lower()
             for item in items:
@@ -163,6 +165,9 @@ def content(kind: ReferenceKind, on_changed=None):
                     'Наименование': item.name,
                     'Объектов': config.count_usage(db, item.id),
                 })
+
+        if search_input is not None:
+            search_input.set_autocomplete(autocomplete_names)
 
         table.rows = rows
         count_label.set_text(f'Записей в справочнике: {total}')
@@ -177,8 +182,8 @@ def content(kind: ReferenceKind, on_changed=None):
             ).props('outline no-caps')
 
         with ui.element('div').classes(FIELD):
-            ui.input(
-                label='Поиск по наименованию',
+            search_input = ui.input(
+                placeholder='Поиск по наименованию',
                 on_change=lambda e: filter_text.update({'name': e.value or ''}) or refresh_table(),
             ).classes(INPUT)
 

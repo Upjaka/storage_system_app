@@ -2,8 +2,11 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import models.catalog_model  # noqa: F401 — register catalog tables
+import models.operations_model  # noqa: F401 — register operations tables
 from models.object_model import Base
 from services.object_service import get_object
+from services.system_flag_service import get_system_codes
 
 
 def object_payload(**overrides) -> dict:
@@ -29,11 +32,14 @@ def assert_object_matches_input(db, obj_id: int, expected: dict) -> None:
 
     scalar_fields = (
         'number_in_db', 'inv_number', 'address', 'object_type',
-        'ownership', 'cost', 'maintenance_mode', 'system_type',
+        'ownership', 'cost', 'maintenance_mode', 'system_type', 'access_code',
     )
     for field in scalar_fields:
         if field in expected:
             assert getattr(obj, field) == expected[field], field
+
+    if 'system_codes' in expected:
+        assert get_system_codes(db, obj_id) == expected['system_codes']
 
     if 'region_id' in expected:
         expected_region = expected['region_id']
