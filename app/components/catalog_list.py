@@ -5,6 +5,7 @@ from typing import Literal
 from nicegui import ui
 
 from layout import DIALOG, FIELD, FORM, GRID_2, INPUT
+from list_table import apply_table_state, search_filter_hint
 from messages import guard_action, run_db_action, show_error_from_exception
 from services import catalog_service as cat
 from services.database import get_db
@@ -419,8 +420,18 @@ def content(kind: CatalogKind, on_changed=None):
                     search_input.set_autocomplete(_filter_autocomplete(kind, db))
             row_cache.clear()
             row_cache.extend(rows)
-            table.rows = [{key: value for key, value in row.items() if not key.startswith('_')} for row in rows]
-            count_label.set_text(f'Записей в справочнике: {total}')
+            display_rows = [{key: value for key, value in row.items() if not key.startswith('_')} for row in rows]
+            needle = filter_text['name'].strip()
+            apply_table_state(
+                table,
+                display_rows,
+                count_label,
+                shown=len(display_rows),
+                total=total,
+                unit='записей в справочнике',
+                filters_active=bool(needle),
+                filter_hint=search_filter_hint(needle, scope=title.lower(), total=total),
+            )
 
         guard_action(load)
 

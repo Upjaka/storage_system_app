@@ -5,6 +5,7 @@ from typing import Literal
 from nicegui import ui
 
 from layout import DIALOG, FIELD, FORM, INPUT
+from list_table import apply_table_state, search_filter_hint
 from messages import guard_action, run_db_action
 from services import reference_service as ref
 from services.database import get_db
@@ -157,8 +158,17 @@ def content(kind: ReferenceKind, on_changed=None):
             if search_input is not None:
                 search_input.set_autocomplete(autocomplete_names)
 
-            table.rows = rows
-            count_label.set_text(f'Записей в справочнике: {total}')
+            needle = filter_text['name'].strip()
+            apply_table_state(
+                table,
+                rows,
+                count_label,
+                shown=len(rows),
+                total=total,
+                unit='записей в справочнике',
+                filters_active=bool(needle),
+                filter_hint=search_filter_hint(needle, scope=config.title.lower(), total=total),
+            )
 
         guard_action(load)
 

@@ -5,6 +5,7 @@ from datetime import datetime
 from nicegui import ui
 
 from layout import DIALOG, FIELD, FORM, GRID_2, INPUT
+from list_table import apply_table_state, object_journal_filter_hint
 from messages import guard_action, run_db_action, show_error, show_error_from_exception, show_warning
 from components.print_component import launch_print_page
 from services.database import get_db
@@ -122,11 +123,14 @@ def _show_record_dialog(
 
 def content(*, object_id: int | None = None, on_changed=None):
     filter_object_id = {'value': object_id}
+    object_options: dict[int | None, str] = {None: 'Все объекты'}
 
     def refresh_table() -> None:
         def load() -> None:
             with get_db() as db:
-                records = get_maintenance_records(db, object_id=filter_object_id['value'])
+                selected_object = filter_object_id['value']
+                records = get_maintenance_records(db, object_id=selected_object)
+                total = len(records) if object_id is not None else len(get_maintenance_records(db, object_id=None))
                 rows = [{
                     'id': record.id,
                     'Дата': _format_date(record.date),
@@ -137,8 +141,25 @@ def content(*, object_id: int | None = None, on_changed=None):
                 } for record in records]
             row_cache.clear()
             row_cache.extend(rows)
-            table.rows = [{k: v for k, v in row.items() if not k.startswith('_')} for row in rows]
-            count_label.set_text(f'Записей: {len(rows)}')
+            display_rows = [{k: v for k, v in row.items() if not k.startswith('_')} for row in rows]
+            filters_active = object_id is None and selected_object is not None
+            filter_hint = None
+            if filters_active and not display_rows:
+                object_label = object_options.get(selected_object, 'выбранный объект')
+                filter_hint = object_journal_filter_hint(
+                    object_label=object_label,
+                    journal='журнале ТО',
+                )
+            apply_table_state(
+                table,
+                display_rows,
+                count_label,
+                shown=len(display_rows),
+                total=total,
+                unit='записей',
+                filters_active=filters_active,
+                filter_hint=filter_hint,
+            )
 
         guard_action(load)
 
@@ -161,10 +182,10 @@ def content(*, object_id: int | None = None, on_changed=None):
 
         if object_id is None:
             with get_db() as db:
-                object_options = {None: 'Все объекты', **{
+                object_options.update({
                     obj.id: f'{obj.number_in_db} — {obj.inv_number}'
                     for obj in get_objects_for_select(db)
-                }}
+                })
             with ui.element('div').classes(FIELD):
                 ui.select(
                     options=object_options,

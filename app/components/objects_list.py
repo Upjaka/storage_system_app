@@ -5,6 +5,7 @@ from services.database import get_db
 from services.object_service import get_object_filter_autocomplete, get_objects_filtered
 from components.object_detail import show_object_detail_dialog
 from layout import FIELD, GRID_FILTERS, INPUT
+from list_table import apply_table_state, object_filters_hint
 
 _FILTER_FIELDS = {
     'number_in_db': 'Номер в БД',
@@ -55,8 +56,16 @@ def content(on_changed=None):
                 'Режим ТО': o.maintenance_mode,
                 'Системы': _format_system_codes(o),
             } for o in objects]
-            table.rows = rows
-            count_label.set_text(f'Объектов в базе: {total}')
+            apply_table_state(
+                table,
+                rows,
+                count_label,
+                shown=len(rows),
+                total=total,
+                unit='объектов',
+                filters_active=bool(active),
+                filter_hint=object_filters_hint(active, _FILTER_FIELDS),
+            )
 
         guard_action(load)
 
