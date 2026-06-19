@@ -1,5 +1,6 @@
 from nicegui import ui
 from models.object_model import Object, SYSTEM_CODES
+from messages import guard_action
 from services.database import get_db
 from services.object_service import get_object_filter_autocomplete, get_objects_filtered
 from components.object_detail import show_object_detail_dialog
@@ -31,30 +32,33 @@ def content(on_changed=None):
     filter_inputs: dict[str, ui.input] = {}
 
     def refresh_table():
-        with get_db() as db:
-            active = {k: v for k, v in filter_values.items() if v not in (None, '')}
-            objects = get_objects_filtered(db, active)
-            total = db.query(Object).count()
-            autocomplete = get_object_filter_autocomplete(db)
+        def load() -> None:
+            with get_db() as db:
+                active = {k: v for k, v in filter_values.items() if v not in (None, '')}
+                objects = get_objects_filtered(db, active)
+                total = db.query(Object).count()
+                autocomplete = get_object_filter_autocomplete(db)
 
-        for field, widget in filter_inputs.items():
-            widget.set_autocomplete(autocomplete.get(field, []))
+            for field, widget in filter_inputs.items():
+                widget.set_autocomplete(autocomplete.get(field, []))
 
-        rows = [{
-            'id': o.id,
-            'Номер в БД': o.number_in_db,
-            'Инв. №': o.inv_number,
-            'Адрес': o.address,
-            'Регион': o.region.name if o.region else '',
-            'Тип': o.object_type,
-            'Собственность': o.ownership,
-            'Стоимость': o.cost,
-            'Ответственный': o.responsible.name if o.responsible else '',
-            'Режим ТО': o.maintenance_mode,
-            'Системы': _format_system_codes(o),
-        } for o in objects]
-        table.rows = rows
-        count_label.set_text(f'Объектов в базе: {total}')
+            rows = [{
+                'id': o.id,
+                'Номер в БД': o.number_in_db,
+                'Инв. №': o.inv_number,
+                'Адрес': o.address,
+                'Регион': o.region.name if o.region else '',
+                'Тип': o.object_type,
+                'Собственность': o.ownership,
+                'Стоимость': o.cost,
+                'Ответственный': o.responsible.name if o.responsible else '',
+                'Режим ТО': o.maintenance_mode,
+                'Системы': _format_system_codes(o),
+            } for o in objects]
+            table.rows = rows
+            count_label.set_text(f'Объектов в базе: {total}')
+
+        guard_action(load)
 
     with ui.column().classes('w-full gap-4'):
         with ui.row().classes('w-full items-center justify-between flex-wrap gap-2'):

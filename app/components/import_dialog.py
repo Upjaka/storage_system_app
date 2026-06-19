@@ -11,6 +11,7 @@ from nicegui import ui
 
 
 from layout import DIALOG, FORM, INPUT
+from messages import show_error_from_exception, show_success, show_warning
 
 from services.database import get_db
 
@@ -146,7 +147,7 @@ def show_import_dialog(on_changed=None):
 
             upload_state['path'] = None
 
-            ui.notify(f'Ошибка получения списка таблиц: {e}', type='negative')
+            show_error_from_exception(e)
 
             if select_widget is not None:
 
@@ -248,13 +249,13 @@ def show_import_dialog(on_changed=None):
 
             if not upload_state['path']:
 
-                ui.notify('Выберите файл', type='warning')
+                show_warning('Выберите файл')
 
                 return
 
             if mode_select.value == IMPORT_MODE_TABLE and not table_select.value:
 
-                ui.notify('Выберите таблицу', type='warning')
+                show_warning('Выберите таблицу')
 
                 return
 
@@ -330,15 +331,11 @@ def show_import_dialog(on_changed=None):
 
                 if mode_select.value == IMPORT_MODE_FULL:
 
-                    notify_type = 'warning' if report.has_warnings else 'positive'
-
-                    ui.notify(report.summary_message(), type=notify_type)
-
                     _show_validation_report(report, on_close=after_report)
 
                 else:
 
-                    ui.notify(f'Импортировано записей: {report.objects}', type='positive')
+                    show_success(f'Импортировано записей: {report.objects}')
 
                     after_report()
 
@@ -348,7 +345,7 @@ def show_import_dialog(on_changed=None):
 
                 status_label.set_text('')
 
-                ui.notify(f'Ошибка импорта: {e}', type='negative')
+                show_error_from_exception(e)
 
             finally:
 

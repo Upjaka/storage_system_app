@@ -1,5 +1,4 @@
 from nicegui import ui
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from services.database import get_db
 from services.object_service import (
     get_object, update_object, create_object, delete_object, get_next_number_in_db,
@@ -20,23 +19,16 @@ from components.extra_works_list import content as extra_works_tab_content
 from components.print_component import launch_print_page
 from services.report_service import object_passport_page
 from layout import DIALOG, FIELD, FORM, GRID_2, INPUT, SPAN_2
+from messages import (
+    ERROR_MODE,
+    run_db_action,
+    show_error,
+    show_error_from_exception,
+    show_success,
+    show_warning,
+    user_message_from_exception,
+)
 from services.object_validation import validate_create_data
-
-ERROR_MODE = 'simple'
-
-
-def _integrity_message(exc: IntegrityError) -> str:
-    raw = str(exc.orig) if exc.orig else str(exc)
-    raw_lower = raw.lower()
-    if 'number_in_db' in raw_lower:
-        simple = 'Объект с таким номером в БД уже существует'
-    elif 'inv_number' in raw_lower:
-        simple = 'Объект с таким инвентарным номером уже существует'
-    else:
-        simple = 'Нарушено ограничение уникальности данных'
-    if ERROR_MODE == 'verbose':
-        return f'{simple}. {type(exc).__name__}: {raw}'
-    return simple
 
 
 def _reference_input(label: str, names: list[str]):
@@ -49,18 +41,6 @@ def _load_reference_value(obj, field: str):
     if field == 'responsible_id':
         return obj.responsible.name if obj.responsible else None
     return getattr(obj, field)
-
-
-def _create_error_message(exc: Exception, data: dict) -> str:
-    if isinstance(exc, IntegrityError):
-        return _integrity_message(exc)
-    if isinstance(exc, SQLAlchemyError):
-        if ERROR_MODE == 'verbose':
-            return f'Ошибка базы данных ({type(exc).__name__}): {exc} | данные: {data}'
-        return 'Не удалось создать объект'
-    if ERROR_MODE == 'verbose':
-        return f'Непредвиденная ошибка ({type(exc).__name__}): {exc} | данные: {data}'
-    return 'Произошла непредвиденная ошибка'
 
 
 def _collect_form_data(form_data: dict) -> dict:
@@ -82,12 +62,16 @@ def _collect_composition_data(composition_widgets: dict) -> dict:
 
 
 def show_object_detail_dialog(obj_id: int = None, on_changed=None):
-    with get_db() as db:
-        region_names = [r.name for r in get_regions(db)]
-        responsible_names = [r.name for r in get_responsibles(db)]
-        default_number_in_db = get_next_number_in_db(db) if obj_id is None else None
-        composition_counts = get_composition_counts(db, obj_id) if obj_id else {}
-        document_values = get_documents(db, obj_id) if obj_id else {}
+    try:
+        with get_db() as db:
+            region_names = [r.name for r in get_regions(db)]
+            responsible_names = [r.name for r in get_responsibles(db)]
+            default_number_in_db = get_next_number_in_db(db) if obj_id is None else None
+            composition_counts = get_composition_counts(db, obj_id) if obj_id else {}
+            document_values = get_documents(db, obj_id) if obj_id else {}
+    except Exception as exc:
+        show_error_from_exception(exc)
+        return
 
     with ui.dialog() as dialog, ui.card().classes(DIALOG):
         ui.label('Редактирование объекта' if obj_id else 'Создание объекта').classes('text-h5')
@@ -196,27 +180,36 @@ def show_object_detail_dialog(obj_id: int = None, on_changed=None):
                             ).classes(INPUT)
 
                         def save_documents() -> None:
-                            with get_db() as db:
-                                upsert_documents(
-                                    db,
-                                    obj_id,
-                                    {field: widget.value for field, widget in document_inputs.items()},
-                                )
-                                db.commit()
-                            ui.notify('Документы сохранены', type='positive')
+                            def action() -> None:
+                                with get_db() as db:
+                                    upsert_documents(
+                                        db,
+                                        obj_id,
+                                        {field: widget.value for field, widget in document_inputs.items()},
+                                    )
+                                    db.commit()
+
+                            run_db_action(action, success_message='Документы сохранены')
 
                         ui.button('Сохранить документы', on_click=save_documents, icon='save')
 
         if obj_id:
-            with get_db() as db:
-                obj = get_object(db, obj_id)
-                active_codes = set(get_system_codes(db, obj_id))
-                for key, widget in form_data.items():
-                    if key == 'system_codes':
-                        for code, checkbox in widget.items():
-                            checkbox.value = code in active_codes
-                    else:
-                        widget.value = _load_reference_value(obj, key)
+            try:
+                with get_db() as db:
+                    obj = get_object(db, obj_id)
+                    if obj is None:
+                        show_error('Объект не найден')
+                        return
+                    active_codes = set(get_system_codes(db, obj_id))
+                    for key, widget in form_data.items():
+                        if key == 'system_codes':
+                            for code, checkbox in widget.items():
+                                checkbox.value = code in active_codes
+                        else:
+                            widget.value = _load_reference_value(obj, key)
+            except Exception as exc:
+                show_error_from_exception(exc)
+                return
 
         if obj_id is None:
             composition_tab.disable()
@@ -227,18 +220,18 @@ def show_object_detail_dialog(obj_id: int = None, on_changed=None):
         def save():
             data = _collect_form_data(form_data)
             if not data.get('system_codes'):
-                ui.notify('Выберите хотя бы один тип системы', type='warning')
+                show_warning('Выберите хотя бы один тип системы')
                 return
             if not obj_id:
                 validation_error = validate_create_data(data, error_mode=ERROR_MODE)
                 if validation_error:
-                    ui.notify(validation_error, type='negative')
+                    show_error(validation_error)
                     return
                 try:
                     with get_db() as db:
                         create_object(db, data)
                 except Exception as exc:
-                    ui.notify(_create_error_message(exc, data), type='negative')
+                    show_error(user_message_from_exception(exc, context=data))
                     return
             else:
                 try:
@@ -253,19 +246,23 @@ def show_object_detail_dialog(obj_id: int = None, on_changed=None):
                             )
                             db.commit()
                 except Exception as exc:
-                    ui.notify(_create_error_message(exc, data), type='negative')
+                    show_error(user_message_from_exception(exc, context=data))
                     return
             dialog.close()
-            ui.notify('Сохранено', type='positive')
+            show_success('Сохранено')
             if on_changed:
                 on_changed()
 
         def remove():
             if obj_id:
-                with get_db() as db:
-                    delete_object(db, obj_id)
+                try:
+                    with get_db() as db:
+                        delete_object(db, obj_id)
+                except Exception as exc:
+                    show_error_from_exception(exc)
+                    return
                 dialog.close()
-                ui.notify('Удалено', type='warning')
+                show_success('Удалено')
                 if on_changed:
                     on_changed()
 
@@ -278,7 +275,7 @@ def show_object_detail_dialog(obj_id: int = None, on_changed=None):
                             page = object_passport_page(db, obj_id)
                         launch_print_page(page)
                     except ValueError as exc:
-                        ui.notify(str(exc), type='negative')
+                        show_error(str(exc))
 
                 ui.button('Печать паспорта', on_click=print_passport, icon='print').props('outline')
                 ui.button('Удалить', on_click=remove, icon='delete', color='red')

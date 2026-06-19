@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from typing import Literal
 
 from nicegui import ui
-from sqlalchemy.exc import IntegrityError
 
 from layout import DIALOG, FIELD, FORM, INPUT
+from messages import guard_action, run_db_action
 from services import reference_service as ref
 from services.database import get_db
 
@@ -48,10 +48,6 @@ _CONFIGS: dict[ReferenceKind, _ReferenceConfig] = {
 }
 
 
-def _duplicate_name_message() -> str:
-    return 'Запись с таким наименованием уже существует'
-
-
 def _show_add_dialog(config: _ReferenceConfig, on_saved: Callable[[], None]) -> None:
     with ui.dialog() as dialog, ui.card().classes(DIALOG):
         ui.label(f'Добавить: {config.name_label.lower()}').classes('text-h5')
@@ -60,18 +56,14 @@ def _show_add_dialog(config: _ReferenceConfig, on_saved: Callable[[], None]) -> 
         )
 
         def save() -> None:
-            try:
+            def action() -> None:
                 with get_db() as db:
                     config.create(db, name_input.value)
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
-                return
-            except IntegrityError:
-                ui.notify(_duplicate_name_message(), type='negative')
+
+            if not run_db_action(action):
                 return
             dialog.close()
-            ui.notify('Сохранено', type='positive')
             on_saved()
 
         with ui.row().classes(f'{FORM} justify-end gap-2 mt-4'):
@@ -98,18 +90,14 @@ def _show_edit_dialog(
             ui.label(f'Привязано объектов: {usage_count}').classes('text-caption')
 
         def save() -> None:
-            try:
+            def action() -> None:
                 with get_db() as db:
                     config.update(db, row_id, name_input.value)
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
-                return
-            except IntegrityError:
-                ui.notify(_duplicate_name_message(), type='negative')
+
+            if not run_db_action(action):
                 return
             dialog.close()
-            ui.notify('Сохранено', type='positive')
             on_saved()
 
         def remove() -> None:
@@ -118,16 +106,15 @@ def _show_edit_dialog(
                 ui.label('Это действие нельзя отменить.').classes('text-caption')
 
                 def confirm_remove() -> None:
-                    try:
+                    def action() -> None:
                         with get_db() as db:
                             config.delete(db, row_id)
                             db.commit()
-                    except ValueError as exc:
-                        ui.notify(str(exc), type='negative')
+
+                    if not run_db_action(action, success_message='Удалено'):
                         return
                     confirm_dialog.close()
                     dialog.close()
-                    ui.notify('Удалено', type='warning')
                     on_saved()
 
                 with ui.row().classes(f'{FORM} justify-end gap-2 mt-4'):
@@ -151,26 +138,29 @@ def content(kind: ReferenceKind, on_changed=None):
     search_input: ui.input | None = None
 
     def refresh_table() -> None:
-        with get_db() as db:
-            items = config.get_all(db)
-            total = len(items)
-            autocomplete_names = [item.name for item in items]
-            rows = []
-            needle = filter_text['name'].strip().lower()
-            for item in items:
-                if needle and needle not in item.name.lower():
-                    continue
-                rows.append({
-                    'id': item.id,
-                    'Наименование': item.name,
-                    'Объектов': config.count_usage(db, item.id),
-                })
+        def load() -> None:
+            with get_db() as db:
+                items = config.get_all(db)
+                total = len(items)
+                autocomplete_names = [item.name for item in items]
+                rows = []
+                needle = filter_text['name'].strip().lower()
+                for item in items:
+                    if needle and needle not in item.name.lower():
+                        continue
+                    rows.append({
+                        'id': item.id,
+                        'Наименование': item.name,
+                        'Объектов': config.count_usage(db, item.id),
+                    })
 
-        if search_input is not None:
-            search_input.set_autocomplete(autocomplete_names)
+            if search_input is not None:
+                search_input.set_autocomplete(autocomplete_names)
 
-        table.rows = rows
-        count_label.set_text(f'Записей в справочнике: {total}')
+            table.rows = rows
+            count_label.set_text(f'Записей в справочнике: {total}')
+
+        guard_action(load)
 
     with ui.column().classes('w-full gap-4'):
         with ui.row().classes('w-full items-center justify-between flex-wrap gap-2'):

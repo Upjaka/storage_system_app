@@ -1,2 +1,3 @@
 **/__pycache__/
 **/.nicegui/
+app/tests/fixtures/access/_introspection_report.json

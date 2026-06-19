@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Literal
 
 from nicegui import ui
-from sqlalchemy.exc import IntegrityError
 
 from layout import DIALOG, FIELD, FORM, GRID_2, INPUT
+from messages import guard_action, run_db_action, show_error_from_exception
 from services import catalog_service as cat
 from services.database import get_db
 
@@ -17,10 +17,6 @@ _TITLES = {
     'work_types': 'Виды работ',
     'maintenance_prices': 'Стоимость ТО',
 }
-
-
-def _duplicate_message() -> str:
-    return 'Запись с таким наименованием уже существует'
 
 
 def _unit_options(db) -> dict[int | None, str]:
@@ -40,33 +36,28 @@ def _show_unit_dialog(row_id: int | None, current_name: str, usage: int, on_save
             ui.label(f'Привязано материалов: {usage}').classes('text-caption')
 
         def save() -> None:
-            try:
+            def action() -> None:
                 with get_db() as db:
                     if row_id is None:
                         cat.create_unit(db, name_input.value)
                     else:
                         cat.update_unit(db, row_id, name_input.value)
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
-                return
-            except IntegrityError:
-                ui.notify(_duplicate_message(), type='negative')
+
+            if not run_db_action(action):
                 return
             dialog.close()
-            ui.notify('Сохранено', type='positive')
             on_saved()
 
         def remove() -> None:
-            try:
+            def action() -> None:
                 with get_db() as db:
                     cat.delete_unit(db, row_id)
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
+
+            if not run_db_action(action, success_message='Удалено'):
                 return
             dialog.close()
-            ui.notify('Удалено', type='warning')
             on_saved()
 
         with ui.row().classes(f'{FORM} justify-between mt-4'):
@@ -78,8 +69,12 @@ def _show_unit_dialog(row_id: int | None, current_name: str, usage: int, on_save
 
 
 def _show_material_dialog(row: dict | None, on_saved) -> None:
-    with get_db() as db:
-        unit_options = _unit_options(db)
+    try:
+        with get_db() as db:
+            unit_options = _unit_options(db)
+    except Exception as exc:
+        show_error_from_exception(exc)
+        return
 
     with ui.dialog() as dialog, ui.card().classes(DIALOG):
         ui.label(
@@ -117,33 +112,29 @@ def _show_material_dialog(row: dict | None, on_saved) -> None:
                 'defect': defect_input.value,
                 'link': link_input.value,
             }
-            try:
+
+            def action() -> None:
                 with get_db() as db:
                     if row is None:
                         cat.create_material(db, **payload)
                     else:
                         cat.update_material(db, row['id'], payload)
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
-                return
-            except IntegrityError:
-                ui.notify(_duplicate_message(), type='negative')
+
+            if not run_db_action(action):
                 return
             dialog.close()
-            ui.notify('Сохранено', type='positive')
             on_saved()
 
         def remove() -> None:
-            try:
+            def action() -> None:
                 with get_db() as db:
                     cat.delete_material(db, row['id'])
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
+
+            if not run_db_action(action, success_message='Удалено'):
                 return
             dialog.close()
-            ui.notify('Удалено', type='warning')
             on_saved()
 
         with ui.row().classes(f'{FORM} justify-between mt-4'):
@@ -155,8 +146,12 @@ def _show_material_dialog(row: dict | None, on_saved) -> None:
 
 
 def _show_work_type_dialog(row: dict | None, on_saved) -> None:
-    with get_db() as db:
-        material_options = _material_options(db)
+    try:
+        with get_db() as db:
+            material_options = _material_options(db)
+    except Exception as exc:
+        show_error_from_exception(exc)
+        return
 
     with ui.dialog() as dialog, ui.card().classes(DIALOG):
         ui.label(
@@ -195,33 +190,29 @@ def _show_work_type_dialog(row: dict | None, on_saved) -> None:
                 'output_text': output_input.value,
                 'material_id': material_select.value,
             }
-            try:
+
+            def action() -> None:
                 with get_db() as db:
                     if row is None:
                         cat.create_work_type(db, **payload)
                     else:
                         cat.update_work_type(db, row['id'], payload)
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
-                return
-            except IntegrityError:
-                ui.notify(_duplicate_message(), type='negative')
+
+            if not run_db_action(action):
                 return
             dialog.close()
-            ui.notify('Сохранено', type='positive')
             on_saved()
 
         def remove() -> None:
-            try:
+            def action() -> None:
                 with get_db() as db:
                     cat.delete_work_type(db, row['id'])
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
+
+            if not run_db_action(action, success_message='Удалено'):
                 return
             dialog.close()
-            ui.notify('Удалено', type='warning')
             on_saved()
 
         with ui.row().classes(f'{FORM} justify-between mt-4'):
@@ -253,33 +244,29 @@ def _show_maintenance_price_dialog(row: dict | None, on_saved) -> None:
                 'equipment_name': name_input.value,
                 'unit_price': price_input.value,
             }
-            try:
+
+            def action() -> None:
                 with get_db() as db:
                     if row is None:
                         cat.create_maintenance_price(db, **payload)
                     else:
                         cat.update_maintenance_price(db, row['id'], payload)
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
-                return
-            except IntegrityError:
-                ui.notify(_duplicate_message(), type='negative')
+
+            if not run_db_action(action):
                 return
             dialog.close()
-            ui.notify('Сохранено', type='positive')
             on_saved()
 
         def remove() -> None:
-            try:
+            def action() -> None:
                 with get_db() as db:
                     cat.delete_maintenance_price(db, row['id'])
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
+
+            if not run_db_action(action, success_message='Удалено'):
                 return
             dialog.close()
-            ui.notify('Удалено', type='warning')
             on_saved()
 
         with ui.row().classes(f'{FORM} justify-between mt-4'):
@@ -425,14 +412,17 @@ def content(kind: CatalogKind, on_changed=None):
     search_input: ui.input | None = None
 
     def refresh_table() -> None:
-        with get_db() as db:
-            rows, total = _build_rows(kind, db, filter_text['name'])
-            if search_input is not None:
-                search_input.set_autocomplete(_filter_autocomplete(kind, db))
-        row_cache.clear()
-        row_cache.extend(rows)
-        table.rows = [{key: value for key, value in row.items() if not key.startswith('_')} for row in rows]
-        count_label.set_text(f'Записей в справочнике: {total}')
+        def load() -> None:
+            with get_db() as db:
+                rows, total = _build_rows(kind, db, filter_text['name'])
+                if search_input is not None:
+                    search_input.set_autocomplete(_filter_autocomplete(kind, db))
+            row_cache.clear()
+            row_cache.extend(rows)
+            table.rows = [{key: value for key, value in row.items() if not key.startswith('_')} for row in rows]
+            count_label.set_text(f'Записей в справочнике: {total}')
+
+        guard_action(load)
 
     def open_add_dialog() -> None:
         if kind == 'units':

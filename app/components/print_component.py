@@ -7,6 +7,7 @@ from typing import Any
 
 from nicegui import ui
 
+from messages import show_error_from_exception
 from services.report_service import PrintPage
 
 _PRINT_CSS = """
@@ -126,10 +127,26 @@ def _render_page_html(payload: dict[str, Any]) -> str:
     )
 
 
+def _render_print_error(message: str) -> None:
+    ui.add_head_html(f'<style>{_PRINT_CSS}</style>')
+    with ui.column().classes('w-full gap-2'):
+        ui.label('Ошибка печати').classes('text-h5 text-negative')
+        ui.label(message).classes('text-body1')
+
+
 def register_print_route() -> None:
     @ui.page('/print/{token}')
     def print_view(token: str) -> None:
-        payload = _decode_token(token)
+        ui.on_exception(show_error_from_exception)
+
+        try:
+            payload = _decode_token(token)
+        except Exception:
+            _render_print_error(
+                'Не удалось открыть документ для печати. Ссылка повреждена или устарела.',
+            )
+            return
+
         ui.add_head_html(f'<style>{_PRINT_CSS}</style>')
 
         with ui.column().classes('w-full'):
@@ -139,7 +156,10 @@ def register_print_route() -> None:
                 icon='print',
             ).classes('no-print mb-4')
 
-            if payload.get('type') == 'html':
-                ui.html(payload.get('html', ''), sanitize=False)
-            else:
-                ui.html(_render_page_html(payload), sanitize=False)
+            try:
+                if payload.get('type') == 'html':
+                    ui.html(payload.get('html', ''), sanitize=False)
+                else:
+                    ui.html(_render_page_html(payload), sanitize=False)
+            except Exception as exc:
+                show_error_from_exception(exc)

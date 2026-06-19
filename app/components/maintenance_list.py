@@ -5,6 +5,7 @@ from datetime import datetime
 from nicegui import ui
 
 from layout import DIALOG, FIELD, FORM, GRID_2, INPUT
+from messages import guard_action, run_db_action, show_error, show_error_from_exception, show_warning
 from components.print_component import launch_print_page
 from services.database import get_db
 from services.report_service import maintenance_act_page
@@ -38,11 +39,15 @@ def _show_record_dialog(
     defaults: dict | None,
     on_saved,
 ) -> None:
-    with get_db() as db:
-        object_options = {
-            obj.id: f'{obj.number_in_db} — {obj.inv_number}'
-            for obj in get_objects_for_select(db)
-        }
+    try:
+        with get_db() as db:
+            object_options = {
+                obj.id: f'{obj.number_in_db} — {obj.inv_number}'
+                for obj in get_objects_for_select(db)
+            }
+    except Exception as exc:
+        show_error_from_exception(exc)
+        return
 
     with ui.dialog() as dialog, ui.card().classes(DIALOG):
         title = 'Добавить запись ТО' if record_id is None else 'Редактирование записи ТО'
@@ -65,7 +70,7 @@ def _show_record_dialog(
 
         def save() -> None:
             if not object_select.value:
-                ui.notify('Выберите объект', type='warning')
+                show_warning('Выберите объект')
                 return
             payload = {
                 'object_id': int(object_select.value),
@@ -73,30 +78,29 @@ def _show_record_dialog(
                 'act_to': act_to.value,
                 'extra_works_flag': extra_works.value,
             }
-            try:
+
+            def action() -> None:
                 with get_db() as db:
                     if record_id is None:
                         create_maintenance_record(db, **payload)
                     else:
                         update_maintenance_record(db, record_id, payload)
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
+
+            if not run_db_action(action):
                 return
             dialog.close()
-            ui.notify('Сохранено', type='positive')
             on_saved()
 
         def remove() -> None:
-            try:
+            def action() -> None:
                 with get_db() as db:
                     delete_maintenance_record(db, record_id)
                     db.commit()
-            except ValueError as exc:
-                ui.notify(str(exc), type='negative')
+
+            if not run_db_action(action, success_message='Удалено'):
                 return
             dialog.close()
-            ui.notify('Удалено', type='warning')
             on_saved()
 
         with ui.row().classes(f'{FORM} justify-between mt-4'):
@@ -108,7 +112,7 @@ def _show_record_dialog(
                             page = maintenance_act_page(db, record_id)
                         launch_print_page(page)
                     except ValueError as exc:
-                        ui.notify(str(exc), type='negative')
+                        show_error(str(exc))
 
                 ui.button('Печать акта', on_click=print_act, icon='print').props('outline')
                 ui.button('Удалить', on_click=remove, icon='delete', color='red')
@@ -120,20 +124,23 @@ def content(*, object_id: int | None = None, on_changed=None):
     filter_object_id = {'value': object_id}
 
     def refresh_table() -> None:
-        with get_db() as db:
-            records = get_maintenance_records(db, object_id=filter_object_id['value'])
-            rows = [{
-                'id': record.id,
-                'Дата': _format_date(record.date),
-                'Объект': f'{record.object.number_in_db} — {record.object.inv_number}',
-                'Акт ТО': 'Да' if record.act_to else '',
-                'Допработы': 'Да' if record.extra_works_flag else '',
-                '_record': record,
-            } for record in records]
-        row_cache.clear()
-        row_cache.extend(rows)
-        table.rows = [{k: v for k, v in row.items() if not k.startswith('_')} for row in rows]
-        count_label.set_text(f'Записей: {len(rows)}')
+        def load() -> None:
+            with get_db() as db:
+                records = get_maintenance_records(db, object_id=filter_object_id['value'])
+                rows = [{
+                    'id': record.id,
+                    'Дата': _format_date(record.date),
+                    'Объект': f'{record.object.number_in_db} — {record.object.inv_number}',
+                    'Акт ТО': 'Да' if record.act_to else '',
+                    'Допработы': 'Да' if record.extra_works_flag else '',
+                    '_record': record,
+                } for record in records]
+            row_cache.clear()
+            row_cache.extend(rows)
+            table.rows = [{k: v for k, v in row.items() if not k.startswith('_')} for row in rows]
+            count_label.set_text(f'Записей: {len(rows)}')
+
+        guard_action(load)
 
     row_cache: list[dict] = []
 
