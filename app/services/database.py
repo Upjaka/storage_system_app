@@ -1,11 +1,11 @@
-import os
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, Session
 from models.object_model import Base
 import models.catalog_model  # noqa: F401 — register catalog tables
 import models.operations_model  # noqa: F401 — register operations tables
+from paths import app_dir
 
-_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'objects.db'))
+_db_path = str(app_dir() / 'objects.db')
 _engine = create_engine(f'sqlite:///{_db_path}', echo=False)
 SessionLocal = sessionmaker(bind=_engine)
 

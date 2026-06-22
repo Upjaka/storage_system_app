@@ -1,11 +1,13 @@
 """Application entry point — page routing, shared layout decorator and run targets."""
 
 import json
+import sys
 from functools import wraps
 
 from nicegui import app, ui
 
 import shell
+from paths import resource_dir
 from components.import_dialog import show_import_dialog
 from components.objects_list import content as objects_list_content
 from components.regions_list import content as regions_list_content
@@ -18,8 +20,11 @@ from components.maintenance_list import content as maintenance_list_content
 from components.extra_works_list import content as extra_works_list_content
 from components.print_component import register_print_route
 
+
+_APP_DIR = resource_dir()
+
 # ── Static assets and global styles ───────────────────────────────────────
-app.add_static_files('/assets', 'assets')
+app.add_static_files('/assets', str(_APP_DIR / 'assets'))
 ui.add_head_html(
     '<link rel="stylesheet" href="/assets/css/global-css.css">'
     '<link rel="stylesheet" href="/assets/css/icons.css">',
@@ -27,7 +32,7 @@ ui.add_head_html(
 )
 
 # ── Config ────────────────────────────────────────────────────────────────
-with open('config.json', 'r', encoding='utf-8') as f:
+with open(_APP_DIR / 'config.json', encoding='utf-8') as f:
     config = json.load(f)
 
 appName    = config["appName"]
@@ -96,6 +101,18 @@ def extra_works_page():
     extra_works_list_content()
 
 # ── Entry point ──────────────────────────────────────────────────────────
-register_print_route()
-ui.run(root, storage_secret="myStorageSecret",
-       title=appName, port=appPort, favicon='dashboard.ico', reconnect_timeout=20)
+if __name__ in {'__main__', '__mp_main__'}:
+    from multiprocessing import freeze_support
+
+    freeze_support()
+    register_print_route()
+    ui.run(
+        root,
+        storage_secret="myStorageSecret",
+        title=appName,
+        port=appPort,
+        favicon=str(_APP_DIR / 'dashboard.ico'),
+        reconnect_timeout=20,
+        reload=not getattr(sys, 'frozen', False),
+        native=getattr(sys, 'frozen', False),
+    )

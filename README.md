@@ -78,9 +78,24 @@ docker compose up
 
 ### Сборка exe (PyInstaller)
 
-```bash
+```powershell
 cd app
-uv run python -m PyInstaller --name storage_system --onedir main.py --noconfirm
+.\build.ps1
+```
+
+Скрипт `build.ps1` собирает `dist/storage_system/storage_system.exe` через `nicegui-pack`,
+включает `assets/`, `config.json` и иконку, затем создаёт архив `dist/storage_system-<версия>-win64.zip`.
+
+База `objects.db` создаётся рядом с exe при первом запуске. Чтобы раздать уже заполненную базу,
+скопируйте `objects.db` в папку `dist/storage_system/` перед архивацией.
+
+Ручная сборка:
+
+```powershell
+cd app
+uv run nicegui-pack --name storage_system --onedir --windowed --icon dashboard.ico `
+  --add-data "assets;assets" --add-data "config.json;." --add-data "dashboard.ico;." `
+  --clean --noconfirm main.py
 ```
 
 ## Чеклист перехода с Access (cutover)
